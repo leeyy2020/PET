@@ -25,8 +25,8 @@ def compute_kl_loss(p, q):
     p_loss = F.kl_div(F.log_softmax(p, axis=-1), F.softmax(q, axis=-1), reduction='none')
     q_loss = F.kl_div(F.log_softmax(q, axis=-1), F.softmax(p, axis=-1), reduction='none')
     # You can choose whether to use function "sum" and "mean" depending on your task
-    p_loss = p_loss.sum()
-    q_loss = q_loss.sum()
+    p_loss = p_loss.mean()
+    q_loss = q_loss.mean()
     loss = (p_loss + q_loss) / 2
     return loss
 
@@ -241,7 +241,7 @@ def do_train(args):
             
             ce_loss = mlm_loss_fn(prediction_scores, masked_lm_labels)
 
-            kl_loss = compute_kl_loss(prediction_scores, prediction_scores_1)
+            kl_loss = compute_kl_loss(prediction_scores, prediction_scores_1)*10000
             
             loss = ce_loss + alpha * kl_loss
             global_step += 1

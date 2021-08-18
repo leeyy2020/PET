@@ -123,6 +123,57 @@ def convert_example(example, tokenizer, max_seq_length=512, is_test=False):
         src_ids = src_ids[:512]
         token_type_ids = token_type_ids[:512]
 
+    sentence1_1 = example["sentence1-1"]
+    if "<unk>" in sentence1_1:
+        start_mask_position = sentence1_1.index("<unk>") + 1
+        sentence1_1 = sentence1_1.replace("<unk>", "")
+        encoded_inputs = tokenizer(text=sentence1_1, max_seq_len=max_seq_length)
+        src_ids_1 = encoded_inputs["input_ids"]
+        token_type_ids_1 = encoded_inputs["token_type_ids"]
+
+
+        # Step2: Insert "[MASK]" to src_ids based on start_mask_position
+        src_ids_1 = src_ids_1[0:start_mask_position] + mask_ids + src_ids_1[
+            start_mask_position:]
+        token_type_ids_1 = token_type_ids_1[0:start_mask_position] + [0] * len(
+            mask_ids) + token_type_ids_1[start_mask_position:]
+
+        # calculate mask_positions
+        mask_positions_1 = [
+            index + start_mask_position for index in range(label_length)
+        ]
+    else:
+        sentence2 = example['sentence2']
+        start_mask_position = sentence2.index("<unk>") + 1
+        sentence2 = sentence2.replace("<unk>", "")
+
+        encoded_inputs = tokenizer(text=sentence2, max_seq_len=max_seq_length)
+        src_ids = encoded_inputs["input_ids"]
+        token_type_ids = encoded_inputs["token_type_ids"]
+        src_ids = src_ids[0:start_mask_position] + mask_ids + src_ids[
+            start_mask_position:]
+        token_type_ids = token_type_ids[0:start_mask_position] + [0] * len(
+            mask_ids) + token_type_ids[start_mask_position:]
+
+        encoded_inputs = tokenizer(text=sentence1, max_seq_len=max_seq_length)
+        sentence1_src_ids = encoded_inputs["input_ids"][1:]
+        src_ids = sentence1_src_ids + src_ids
+        token_type_ids += [1] * len(src_ids)
+        mask_positions = [
+            index + start_mask_position + len(sentence1)
+            for index in range(label_length)
+        ]
+
+    token_type_ids_1 = [0] * len(src_ids_1)
+
+    assert len(src_ids_1) == len(
+        token_type_ids_1), "length src_ids, token_type_ids must be equal"
+
+    length = len(src_ids_1)
+    if length > 512:
+        src_ids_1 = src_ids_1[:512]
+        token_type_ids_1 = token_type_ids_1[:512]
+
     if is_test:
         return src_ids, token_type_ids, mask_positions
     else:
@@ -134,7 +185,7 @@ def convert_example(example, tokenizer, max_seq_length=512, is_test=False):
         ) == label_length, "length of mask_lm_labels:{} mask_positions:{} label_length:{} not equal".format(
             mask_lm_labels, mask_positions, text_label)
 
-        return src_ids, token_type_ids, mask_positions, mask_lm_labels
+        return src_ids, token_type_ids, mask_positions, mask_lm_labels, src_ids_1, token_type_ids_1, mask_positions_1, mask_lm_labels
 
 
 def convert_chid_example(example, tokenizer, max_seq_length=512, is_test=False):
@@ -331,12 +382,16 @@ def transform_eprstmt(example,
 
         if pattern_id == 0:
             example["sentence1"] = u'感觉很<unk>！' + example["sentence"]
+            example["sentence1-1"] = u'综合来讲很<unk>！，' + example["sentence"]
         elif pattern_id == 1:
             example["sentence1"] = u'综合来讲很<unk>！，' + example["sentence"]
+            example["sentence1-1"] = example["sentence"] + u'感觉非常<unk>'
         elif pattern_id == 2:
             example["sentence1"] = example["sentence"] + u'感觉非常<unk>'
+            example["sentence1-1"] = example["sentence"] + u'， 我感到非常<unk>'
         elif pattern_id == 3:
             example["sentence1"] = example["sentence"] + u'， 我感到非常<unk>'
+            example["sentence1-1"] = u'感觉很<unk>！' + example["sentence"]
 
         del example["sentence"]
         del example["label"]

@@ -33,7 +33,7 @@ def do_evaluate(model, tokenizer, data_loader, label_normalize_dict):
     label_length = len(normed_labels[0])
 
     for batch in data_loader:
-        src_ids, token_type_ids, masked_positions, masked_lm_labels = batch
+        src_ids, token_type_ids, masked_positions, masked_lm_labels, _, _, _, _, = batch
 
         max_len = src_ids.shape[1]
         new_masked_positions = []
